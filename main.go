@@ -10,6 +10,25 @@ import (
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 )
 
+func includes(s []uint8, e uint8) bool {
+    for _, a := range s {
+        if a == e {
+            return true
+        }
+    }
+    return false
+}
+
+func filter(s []uint8, e uint8) (ret []uint8) {
+	for _, v := range s {
+		if v != e {
+			ret = append(ret, v)
+		}
+	}
+
+	return
+}
+
 func main() {
 	defer midi.CloseDriver()
 
@@ -40,13 +59,19 @@ func main() {
 
 	fmt.Println(in)
 
+	var notesPressed []uint8
+	// var notesActive []uint8
 	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
 		var ch, key, vel uint8
 		switch {
 		case msg.GetNoteStart(&ch, &key, &vel):
-			fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
+			if !includes(notesPressed, key) {
+				notesPressed = append(notesPressed, key)
+			}
+			fmt.Println(notesPressed)
 		case msg.GetNoteEnd(&ch, &key):
-			fmt.Printf("ending note %s on channel %v\n", midi.Note(key), ch)
+			notesPressed = filter(notesPressed, key)
+			fmt.Println(notesPressed)
 		default:
 			// ignore
 		}
