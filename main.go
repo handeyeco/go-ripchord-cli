@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/xml"
+	"flag"
 	"fmt"
-	"io/ioutil"
+	"gitlab.com/gomidi/midi/v2/drivers"
+	"io"
 	"os"
 
 	"gitlab.com/gomidi/midi/v2"
@@ -54,23 +56,76 @@ func main() {
 
 	// List available MIDI I/O
 	drv, err := rtmididrv.New()
+
+	var ripchordFile, midiInPort, midiOutPort string
+	flag.StringVar(&ripchordFile, "f", "", "Ripchord preset file (.rpc)")
+	flag.StringVar(&midiInPort, "i", "", "MIDI input port")
+	flag.StringVar(&midiOutPort, "o", "", "MIDI output port")
+	flag.Parse()
+
+	if ripchordFile == "" {
+		fmt.Println("No Ripchord file specified")
+		fmt.Println("Run with '-f' to specify a flag: -f \"PATH/TO_FILE\"")
+		return
+	}
+
+	var in drivers.In
 	inputs, err := drv.Ins()
-	fmt.Println(inputs)
+	if midiInPort == "" {
+		if err != nil {
+			fmt.Println("Unable to get MIDI inputs")
+			fmt.Println("Available ports are:")
+			for _, i := range inputs {
+				fmt.Println(i)
+			}
+			return
+		}
+		in = inputs[0]
+		fmt.Printf("Defaulted to first MIDI in: %v\n", in)
+	} else {
+		in, err = midi.FindInPort(midiInPort)
+		if err != nil {
+			fmt.Printf("Unable to find MIDI in: %v\n", midiInPort)
+			return
+		}
+		fmt.Printf("Found provided MIDI input: %v\n", in)
+	}
+
+	var out drivers.Out
 	outputs, err := drv.Outs()
-	fmt.Println(outputs)
+	if midiOutPort == "" {
+		if err != nil {
+			fmt.Println("Unable to get MIDI outputs")
+			return
+		}
+		out = outputs[0]
+		fmt.Printf("Defaulted to first MIDI out: %v\n", out)
+	} else {
+		out, err = midi.FindOutPort(midiOutPort)
+		if err != nil {
+			fmt.Printf("Unable to find MIDI out: %v\n", midiOutPort)
+			fmt.Println("Available ports are:")
+			for _, i := range outputs {
+				fmt.Println(i)
+			}
+			return
+		}
+		fmt.Printf("Found provided MIDI output: %v\n", out)
+	}
 
 	// Open our xmlFile
-	xmlFile, err := os.Open("ripchord/MP Neo Soul X-16.rpc")
+	xmlFile, err := os.Open(ripchordFile)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("File not found: %v\n", ripchordFile)
+		return
 	}
 
 	fmt.Println("Successfully opened XML")
 	// defer the closing of our xmlFile so that we can parse it later on
 	defer xmlFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(xmlFile)
+	byteValue, _ := io.ReadAll(xmlFile)
 	var ripchordXML RipchordXML
 	xml.Unmarshal(byteValue, &ripchordXML)
 
@@ -79,20 +134,6 @@ func main() {
 		fmt.Println("Unable to convert marshalled XML to Ripchord struct")
 		return
 	}
-
-	in, err := midi.FindInPort("microKEY-37 KEYBOARD")
-	if err != nil {
-		fmt.Println("Unable to find microKEY-37 KEYBOARD")
-		return
-	}
-	fmt.Printf("Found input: %v\n", in)
-
-	out, err := midi.FindOutPort("M4")
-	if err != nil {
-		fmt.Println("Unable to find M4")
-		return
-	}
-	fmt.Printf("Found output: %v\n", out)
 
 	send, _ := midi.SendTo(out)
 
@@ -135,6 +176,8 @@ func main() {
 			// ignore
 		}
 	}, midi.UseSysEx())
+
+	fmt.Println("Ready...")
 
 	for {
 		if err != nil {
