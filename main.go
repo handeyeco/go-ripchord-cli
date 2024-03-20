@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/xml"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"gitlab.com/gomidi/midi/v2"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
@@ -10,7 +13,26 @@ import (
 func main() {
 	defer midi.CloseDriver()
 
-    in, err := midi.FindInPort("microKEY-37 KEYBOARD")
+	// Open our xmlFile
+	xmlFile, err := os.Open("ripchord/MP Neo Soul X-16.rpc")
+	// if we os.Open returns an error then handle it
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println("Successfully opened XML")
+	// defer the closing of our xmlFile so that we can parse it later on
+	defer xmlFile.Close()
+
+	byteValue, _ := ioutil.ReadAll(xmlFile)
+	var ripchordXML RipchordXML
+	xml.Unmarshal(byteValue, &ripchordXML)
+	// fmt.Println(ripchordXML)
+
+	ripchord, err := ripchordFromXML(ripchordXML)
+	fmt.Println(ripchord.Map)
+
+	in, err := midi.FindInPort("microKEY-37 KEYBOARD")
 	if err != nil {
 		fmt.Println("Unable to find microKEY-37 KEYBOARD")
 		return
@@ -19,11 +41,8 @@ func main() {
 	fmt.Println(in)
 
 	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
-		var bt []byte
 		var ch, key, vel uint8
 		switch {
-		case msg.GetSysEx(&bt):
-			fmt.Printf("got sysex: % X\n", bt)
 		case msg.GetNoteStart(&ch, &key, &vel):
 			fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
 		case msg.GetNoteEnd(&ch, &key):

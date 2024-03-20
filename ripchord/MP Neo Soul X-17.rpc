@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ripchord>
+  <preset>
+    <input note="60">
+      <chord name="C3 A#3 D4 D#4 G4 A#4 D5" notes="48;58;62;63;67;70;74"/>
+    </input>
+    <input note="61">
+      <chord name="G4" notes="67"/>
+    </input>
+    <input note="62">
+      <chord name="B2 A#3 D4 F#4 A#4 D5" notes="47;58;62;66;70;74"/>
+    </input>
+    <input note="63">
+      <chord name="G#3 G#4" notes="56;68"/>
+    </input>
+    <input note="64">
+      <chord name="C3 A#3 D#4 G4 D5" notes="48;58;63;67;74"/>
+    </input>
+    <input note="65">
+      <chord name="D3 C4 F4 A4 E5" notes="50;60;65;69;76"/>
+    </input>
+    <input note="66">
+      <chord name="F3 D#4 G#4 C5 G5" notes="53;63;68;72;79"/>
+    </input>
+    <input note="67">
+      <chord name="F5" notes="77"/>
+    </input>
+    <input note="68">
+      <chord name="D#5" notes="75"/>
+    </input>
+  </preset>
+</ripchord>
