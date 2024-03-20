@@ -7,26 +7,28 @@ import (
 )
 
 type Ripchord struct {
-	Map map[int]RipchordMapping
+	Map map[uint8]RipchordMapping
 }
 
 func ripchordFromXML(rcxml RipchordXML) (*Ripchord, error) {
 	var rv Ripchord
-	newMap := make(map[int]RipchordMapping)
+	newMap := make(map[uint8]RipchordMapping)
 
 	for _, input := range rcxml.Preset.Inputs {
-		triggerNote, err := strconv.Atoi(input.Note)
+		triggerNoteInt, err := strconv.Atoi(input.Note)
 		if err != nil {
 			return nil, err
 		}
+		triggerNote := uint8(triggerNoteInt)
 
 		outputNotesStr := strings.Split(input.Chord.Notes, ";")
-		var outputNotes []int
+		var outputNotes []uint8
 		for _, note := range outputNotesStr {
-			parsedNote, err := strconv.Atoi(note)
+			parsedNoteInt, err := strconv.Atoi(note)
 			if err != nil {
 				return nil, err
 			}
+			parsedNote := uint8(parsedNoteInt)
 			outputNotes = append(outputNotes, parsedNote)
 		}
 
@@ -43,8 +45,8 @@ func ripchordFromXML(rcxml RipchordXML) (*Ripchord, error) {
 }
 
 type RipchordMapping struct {
-	TriggerNote int
-	OutputNotes []int
+	TriggerNote uint8
+	OutputNotes []uint8
 	Name        string
 }
 
