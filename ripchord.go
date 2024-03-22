@@ -14,6 +14,34 @@ type Ripchord struct {
 	Map map[uint8]RipchordMapping
 }
 
+type RipchordMapping struct {
+	TriggerNote uint8
+	OutputNotes []uint8
+	Name        string
+}
+
+type RipchordXML struct {
+	XMLName xml.Name  `xml:"ripchord"`
+	Preset  PresetXML `xml:"preset"`
+}
+
+type PresetXML struct {
+	XMLName xml.Name   `xml:"preset"`
+	Inputs  []InputXML `xml:"input"`
+}
+
+type InputXML struct {
+	XMLName xml.Name `xml:"input"`
+	Note    string   `xml:"note,attr"`
+	Chord   ChordXML `xml:"chord"`
+}
+
+type ChordXML struct {
+	XMLName xml.Name `xml:"chord"`
+	Name    string   `xml:"name,attr"`
+	Notes   string   `xml:"notes,attr"`
+}
+
 func ripchordFromXML(rcxml RipchordXML) (*Ripchord, error) {
 	var rv Ripchord
 	newMap := make(map[uint8]RipchordMapping)
@@ -66,32 +94,4 @@ func parseRipchordXML(ripchordXML *RipchordXML, ripchordFileName string) error {
 	}
 
 	return nil
-}
-
-type RipchordMapping struct {
-	TriggerNote uint8
-	OutputNotes []uint8
-	Name        string
-}
-
-type RipchordXML struct {
-	XMLName xml.Name  `xml:"ripchord"`
-	Preset  PresetXML `xml:"preset"`
-}
-
-type PresetXML struct {
-	XMLName xml.Name   `xml:"preset"`
-	Inputs  []InputXML `xml:"input"`
-}
-
-type InputXML struct {
-	XMLName xml.Name `xml:"input"`
-	Note    string   `xml:"note,attr"`
-	Chord   ChordXML `xml:"chord"`
-}
-
-type ChordXML struct {
-	XMLName xml.Name `xml:"chord"`
-	Name    string   `xml:"name,attr"`
-	Notes   string   `xml:"notes,attr"`
 }
