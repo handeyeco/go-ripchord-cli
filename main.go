@@ -8,6 +8,68 @@ import (
 	"gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 )
 
+/*
+ * We need to keep track of two things while juggling this conversion between
+ * individual notes and their chords.
+ * - notesPressed: what notes are actively being sent from MIDI in
+ * - notesActive: what notes are we sending to MIDI out after the Ripchord conversion
+ * calculateNotesActive handles the conversion for us so we know what the MIDI state _should_ be,
+ * we just have to compare its output with the previous state so we can update the output
+ * with note on/off messages.
+ */
+func midiLoop(ripchord *Ripchord, in drivers.In, out drivers.Out) error {
+	send, _ := midi.SendTo(out)
+
+	var notesPressed []uint8
+	var notesActive []uint8
+	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
+		var ch, key, vel uint8
+		switch {
+		case msg.GetNoteStart(&ch, &key, &vel):
+			if !includes(notesPressed, key) {
+				notesPressed = append(notesPressed, key)
+				newNotesActive := calculateNotesActive(notesPressed, *ripchord)
+
+				for _, newNote := range newNotesActive {
+					if !includes(notesActive, newNote) {
+						fmt.Printf("MIDI On: %v\n", newNote)
+						send(midi.NoteOn(ch, newNote, 100))
+					}
+				}
+
+				notesActive = newNotesActive
+			}
+			fmt.Println(notesActive)
+		case msg.GetNoteEnd(&ch, &key):
+			if includes(notesPressed, key) {
+				notesPressed = filter(notesPressed, key)
+				newNotesActive := calculateNotesActive(notesPressed, *ripchord)
+
+				for _, oldNote := range notesActive {
+					if !includes(newNotesActive, oldNote) {
+						fmt.Printf("MIDI Off: %v\n", oldNote)
+						send(midi.NoteOff(ch, oldNote))
+					}
+				}
+
+				notesActive = newNotesActive
+			}
+			fmt.Println(notesActive)
+		default:
+			// ignore
+		}
+	}, midi.UseSysEx())
+
+	fmt.Println("Ready...")
+
+	for {
+		if err != nil {
+			stop()
+			return err
+		}
+	}
+}
+
 func main() {
 	defer midi.CloseDriver()
 
@@ -60,58 +122,12 @@ func main() {
 		return
 	}
 
-	send, _ := midi.SendTo(out)
-
 	// ====================
 	// Handle MIDI messages
 	// ====================
-	var notesPressed []uint8
-	var notesActive []uint8
-	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
-		var ch, key, vel uint8
-		switch {
-		case msg.GetNoteStart(&ch, &key, &vel):
-			if !includes(notesPressed, key) {
-				notesPressed = append(notesPressed, key)
-				newNotesActive := calculateNotesActive(notesPressed, *ripchord)
-
-				for _, newNote := range newNotesActive {
-					if !includes(notesActive, newNote) {
-						fmt.Printf("MIDI On: %v\n", newNote)
-						send(midi.NoteOn(ch, newNote, 100))
-					}
-				}
-
-				notesActive = newNotesActive
-			}
-			fmt.Println(notesActive)
-		case msg.GetNoteEnd(&ch, &key):
-			if includes(notesPressed, key) {
-				notesPressed = filter(notesPressed, key)
-				newNotesActive := calculateNotesActive(notesPressed, *ripchord)
-
-				for _, oldNote := range notesActive {
-					if !includes(newNotesActive, oldNote) {
-						fmt.Printf("MIDI Off: %v\n", oldNote)
-						send(midi.NoteOff(ch, oldNote))
-					}
-				}
-
-				notesActive = newNotesActive
-			}
-			fmt.Println(notesActive)
-		default:
-			// ignore
-		}
-	}, midi.UseSysEx())
-
-	fmt.Println("Ready...")
-
-	for {
-		if err != nil {
-			fmt.Printf("ERROR: %s\n", err)
-			stop()
-			return
-		}
+	err = midiLoop(ripchord, in, out)
+	if err != nil {
+		fmt.Printf("ERROR: %s\n", err)
+		return
 	}
 }
