@@ -2,6 +2,10 @@ package main
 
 import (
 	"encoding/xml"
+	"errors"
+	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -42,6 +46,26 @@ func ripchordFromXML(rcxml RipchordXML) (*Ripchord, error) {
 	rv.Map = newMap
 
 	return &rv, nil
+}
+
+func parseRipchordXML(ripchordXML *RipchordXML, ripchordFileName string) error {
+	xmlFile, err := os.Open(ripchordFileName)
+	if err != nil {
+		return errors.New(fmt.Sprintf("file not found: %v\n", ripchordFileName))
+	}
+	defer xmlFile.Close()
+
+	byteValue, err := io.ReadAll(xmlFile)
+	if err != nil {
+		return errors.New("unable to read XML file")
+	}
+
+	err = xml.Unmarshal(byteValue, &ripchordXML)
+	if err != nil {
+		return errors.New("unable to marshall XML file")
+	}
+
+	return nil
 }
 
 type RipchordMapping struct {
